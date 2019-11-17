@@ -6,7 +6,7 @@
 #define ERROR 2394239
 #define ELM "%d"
 
-typedef unsigned long int canary_t;
+typedef unsigned int canary_t;
 
 enum BOOL
 {
@@ -32,7 +32,7 @@ private:
     const double error = ERROR;
 
 public:
-    BOOL StackInit ();
+    Stack_t ();
     BOOL FillStackPoison();
 
     BOOL StackPush (elem_t element);
@@ -48,6 +48,8 @@ public:
 
     double Ok();
     void Dump(const char* reason);
+
+    BOOL StackDestr();
 
 };
 

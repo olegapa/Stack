@@ -8,7 +8,7 @@ elem_t* Stack_t<elem_t>:: StackRealloc(int new_maxsize)
 {
     Ok();
 
-    elem_t* new_data = new elem_t(new_maxsize) + (elem_t) (new canary_t(2));
+    elem_t* new_data = new elem_t[new_maxsize+3];
 
     assert(new_data != NULL);
 
@@ -33,17 +33,17 @@ elem_t* Stack_t<elem_t>:: StackRealloc(int new_maxsize)
     can2 = (canary_t*) (new_data + new_maxsize + 1);
     *can2 = 0xdead;
 
-    Ok();
+    maxsize = new_maxsize;
 
     return new_data;
 }
 
 template <typename elem_t>
-BOOL Stack_t <elem_t>:: StackInit ()
+Stack_t <elem_t>:: Stack_t ()
 {
 
 
-    data = new elem_t(DEFAULT+3);
+    data = new elem_t[DEFAULT+3];
 
     can1 = (canary_t*) data;
 
@@ -52,21 +52,17 @@ BOOL Stack_t <elem_t>:: StackInit ()
     data = (elem_t*) ((canary_t*)data + 1);
 
     size = 0;
-    maxsize = DEFAULT - 1;
+    maxsize = DEFAULT - 2;
 
     can2 = (canary_t*) (data + maxsize + 1);
     *can2 = 0xdead;
 
     assert(data != NULL);
-
     FillStackPoison();
-
 
     hash = MurmurHash2();
 
     Ok();
-//    printf("f");
-    return TRUE;
 }
 
 template <typename elem_t>
@@ -102,8 +98,9 @@ elem_t Stack_t<elem_t>:: StackPop ()
 
     hash = MurmurHash2();
 
-    if(size <= maxsize/3)
-        data =  StackRealloc(maxsize);
+
+    if(size <= maxsize/3 && maxsize > DEFAULT)
+        data =  StackRealloc(maxsize/3);
 
     Ok();
 
@@ -124,29 +121,32 @@ BOOL Stack_t <elem_t>:: FillStackPoison()
 template <typename elem_t>
 void Stack_t <elem_t>:: Print()
 {
+    printf("Stack:   ");
     for(int i = 0; i < size; i++)
     {
         printf(ELM, data[i]);
 
         printf("   ");
     }
+    printf("\n");
 
 }
 
 template <typename elem_t>
 unsigned int Stack_t <elem_t>:: MurmurHash2()
 {
+    int len = size;
 
     const unsigned int m = 0x5bd1e995;
     const unsigned int seed = 0;
     const int r = 24;
 
-    unsigned int h = seed ^ size;
+    unsigned int h = seed ^ len;
 
     const unsigned char * key = (const unsigned char *)data;
     unsigned int k;
 
-    while (size >= 4)
+    while (len >= 4)
     {
         k  = key[0];
         k |= key[1] << 8;
@@ -161,10 +161,10 @@ unsigned int Stack_t <elem_t>:: MurmurHash2()
         h ^= k;
 
         key += 4;
-        size -= 4;
+        len -= 4;
     }
 
-    switch (size)
+    switch (len)
     {
     case 3:
         h ^= key[2] << 16;
@@ -189,7 +189,7 @@ unsigned int Stack_t <elem_t>:: MurmurHash2()
 template <typename elem_t>
 void Stack_t <elem_t>:: Dump(const char* reason)
 {
-    printf("Stuck_t stk  DUMP reason: %s\n{\n\tsize = %d\n\tmaxsize = %d\n\tdata:\n\t{\n\t\tcan1 = %x\n\t\t", reason, size, maxsize, *can1);
+    printf("Stuck_t stk  DUMP reason: %s\n{\n\tsize = %d\n\tmaxsize = %d\n\tdata:\t%d\n\t{\n\t\tcan1 = %x\n\t\t", reason, size, maxsize, &data[0], *can1);
     for(int i = 0; i <= maxsize; i++)
     {
         if(data[i] != POISON)
@@ -208,7 +208,6 @@ void Stack_t <elem_t>:: Dump(const char* reason)
 template <typename elem_t>
 double Stack_t <elem_t>:: Ok()
 {
-//    printf("DDD");
     if(abs(hash - MurmurHash2()) >= eps)
     {
         Dump("wrong hash");
@@ -217,15 +216,14 @@ double Stack_t <elem_t>:: Ok()
 
     if(*can1 != 0xbeda || *can2 != 0xdead)
     {
-        printf("LOL");
         Dump("wrong canary");
         return ERROR;
 
     }
 
-    if(size >= maxsize)
+    if(size > maxsize)
     {
-        Dump("wrong size (size >= maxsize");
+        Dump("wrong size (size > maxsize)");
         return ERROR;
 
     }
@@ -235,7 +233,7 @@ double Stack_t <elem_t>:: Ok()
     {
         if(data[i] == POISON)
         {
-            Dump("stack have poison elemen");
+            Dump("stack have poison element");
             return ERROR;
         }
 
@@ -246,7 +244,7 @@ double Stack_t <elem_t>:: Ok()
     {
         if(data[i] != POISON)
         {
-            Dump("elemen out of stack");
+            Dump("element out of stack");
             return ERROR;
         }
 
@@ -255,3 +253,14 @@ double Stack_t <elem_t>:: Ok()
     return 0;
 
 }
+
+template<typename elem_t>
+BOOL Stack_t<elem_t>:: StackDestr()
+{
+    delete [] data;
+    delete [] can1;
+    delete [] can2;
+
+    return TRUE;
+}
+
